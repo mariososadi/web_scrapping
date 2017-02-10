@@ -6,6 +6,7 @@ require 'nokogiri'
 require 'open-uri'
 require 'date'
 require 'net/http'
+require 'benchmark'
 
 class WebScrapper
 
@@ -22,7 +23,7 @@ class WebScrapper
 
   def url_scrapping
 
-    for i in 1..4
+    for i in 1..10
 
       @day = i
       s = self.url_main
@@ -35,20 +36,23 @@ class WebScrapper
         @doc = Nokogiri::HTML(html)
         links = @doc.css("#content .wrapper .entry-title a")
         @hrefs = links.map {|link| link.attribute("href").to_s}.uniq.sort.delete_if {|href| href.empty?} #Creation of the array of links of each post
+        self.content_saving
       end
+
+      
 
     end
 
   end
 
   def content_saving
+
       @hrefs.each do |h| 
       html = open(h).read
       @doc = Nokogiri::HTML(html)
-      p text = @doc.css("p.post-without-image")
-      #p @content = text.map {|link| link.inner_text.to_s}.delete_if {|href| href.empty?}
-      #File.write("twitter_account.html", html_file) 
-
+      text = @doc.css("[itemprop~=articleBody] p")
+      @content = text.map {|link| link.inner_text.to_s}.delete_if {|href| href.empty? }
+      File.open('context.txt', 'a') { |f| f.puts @content.first }
     end
 
   end
@@ -56,30 +60,7 @@ class WebScrapper
   
 end
 
-=begin
-  def extract_tweets
-    tweets = @doc.search(".js-tweet-text-container")
-    dates = @doc.search(".time")
-    retweets = @doc.search("[title~=Retweet] + div > span") 
-    favs = @doc.search(".ProfileTweet-actionButton.js-actionButton.js-actionFavorite > div + div > span") 
-    0.upto(4) do |i| 
-    puts "#{dates[i].css('a').collect{|x| x["title"]}.join.split(" ",3).last.slice(0..6)}: " + "#{tweets[i].inner_text.delete!("\n").strip}" 
-    puts "    Retweets: #{retweets.inner_text.split[i]}   Likes: #{favs.inner_text.split[i]}"
-    end
- 
-  end
-    
-    
-
-  def extract_stats
-    twitter_stats = @doc.search(".ProfileCanopy-nav")
-    twitter_stats.inner_text.split
-  end
-
-=end
-
- 
 web = WebScrapper.new(2016)
-web.url_scrapping
-web.content_saving
+puts Benchmark.measure {web.url_scrapping}
+
 
