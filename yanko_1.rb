@@ -4,26 +4,59 @@
 
 require 'nokogiri'
 require 'open-uri'
+require 'date'
+require 'net/http'
 
 class WebScrapper
 
-  def initialize(url)
-    @url = url 
-    html_file = open(@url).read
-    File.write("twitter_account.html", html_file)  
+  def initialize(year)
+    @year = year
   end
+
+  def url_main
+    url_yanko = "https://www.yankodesign.com"
+    dd = Date.ordinal(@year,@day).strftime("%d")
+    mm = Date.ordinal(@year,@day).strftime("%m")
+    return @url = "#{url_yanko}/#{@year}/#{mm}/#{dd}"
+  end
+
+  def url_scrapping
+
+    for i in 1..4
+
+      @day = i
+      s = self.url_main
+      url = URI.parse(s)
+      request = Net::HTTP.new(url.host)
+      response = request.request_head(url.path)
+
+      if response.code.to_i != 404  # The error exception if the url/date has actually content
+        html = open(s).read
+        @doc = Nokogiri::HTML(html)
+        links = @doc.css("#content .wrapper .entry-title a")
+        @hrefs = links.map {|link| link.attribute("href").to_s}.uniq.sort.delete_if {|href| href.empty?} #Creation of the array of links of each post
+      end
+
+    end
+
+  end
+
+  def content_saving
+      @hrefs.each do |h| 
+      html = open(h).read
+      @doc = Nokogiri::HTML(html)
+      p text = @doc.css("p.post-without-image")
+      #p @content = text.map {|link| link.inner_text.to_s}.delete_if {|href| href.empty?}
+      #File.write("twitter_account.html", html_file) 
+
+    end
+
+  end
+
   
- end
+end
 
 =begin
-
-  def extract_username
-    @doc = Nokogiri::HTML(File.open("twitter_account.html"))
-    profile_name = @doc.search(".ProfileHeaderCard-name > a")
-    profile_name.first.inner_text
-
-  end
-
   def extract_tweets
     tweets = @doc.search(".js-tweet-text-container")
     dates = @doc.search(".time")
@@ -46,13 +79,7 @@ class WebScrapper
 =end
 
  
-username = TwitterScrapper.new('https://twitter.com/ManceraMiguelMX')
+web = WebScrapper.new(2016)
+web.url_scrapping
+web.content_saving
 
-=begin
-puts "---------------------------------------------------------------------------"
-puts "Username: #{username.extract_username}"
-puts "---------------------------------------------------------------------------"
-puts "Tweets: #{username.extract_stats[1]}   Following: #{username.extract_stats[3]}   Followers: #{username.extract_stats[5]}   Likes:  #{username.extract_stats[8]}"
-puts "---------------------------------------------------------------------------"
-puts "Tweets:"
-puts "#{username.extract_tweets}"=end
